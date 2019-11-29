@@ -50,6 +50,13 @@ struct Vector3
   float z;
 };
 
+struct Color
+{
+  char r;
+  char g;
+  char b;
+};
+
 typedef struct _Triangle
 {
   struct Vertex v[3];
@@ -91,8 +98,8 @@ void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 
 void create_frustum();
 struct Vector3 lerpRay(int x, int y);
-void triangle_intersection(struct Vector3 direction);
-void sphere_intersection(struct Vector3 direction);
+void triangle_intersection(struct Vector3 direction, struct Color color);
+void sphere_intersection(struct Vector3 direction, struct Color& color);
 
 //MODIFY THIS FUNCTION
 void draw_scene()
@@ -109,15 +116,18 @@ void draw_scene()
     for(y=0;y < HEIGHT;y++)
     {
       struct Vector3 direction; 
+      struct Color color;
 
       direction = lerpRay(x, y);
 
-      std::cout << direction.x << ", " << direction.y << ", " << direction.z << std::endl;
+      color.r = 255;
+      color.g = 255;
+      color.b = 255;
 
-      triangle_intersection(direction);
-      sphere_intersection(direction); 
+      triangle_intersection(direction, color);
+      sphere_intersection(direction, color); 
 
-      plot_pixel(x,y,x%256,y%256,(x+y)%256);
+      plot_pixel(x,y,color.r,color.g,color.b);
     }
     glEnd();
     glFlush();
@@ -174,10 +184,16 @@ struct Vector3 lerpRay(int x, int y)
   result.y = (left.y + right.y) / 2.0f;
   result.z = -1.0f;
 
+  float magnitude = sqrt(pow(result.x, 2.0f) + pow(result.y, 2.0f) + pow(result.z, 2.0f));
+
+  result.x = result.x / magnitude; 
+  result.y = result.y / magnitude; 
+  result.z = result.z / magnitude; 
+
   return result; 
 }
 
-void triangle_intersection(struct Vector3 direction)
+void triangle_intersection(struct Vector3 direction, struct Color color)
 {
   for(int i = 0; i < num_triangles; i++)
   {
@@ -185,11 +201,32 @@ void triangle_intersection(struct Vector3 direction)
   }
 }
 
-void sphere_intersection(struct Vector3 direction)
+void sphere_intersection(struct Vector3 direction, struct Color& color)
 {
   for(int i = 0; i < num_spheres; i++)
   {
+    struct _Sphere current = spheres[i];
 
+    struct Vector3 center; 
+    center.x = current.position[0]; 
+    center.y = current.position[1];
+    center.z = current.position[2];
+
+    float a = pow(direction.x, 2.0f) + pow(direction.y, 2.0f) + pow(direction.z, 2.0f); 
+    float b = 2.0f * ((direction.x * (camera.x - center.x)) + (direction.y * (camera.y - center.y)) + (direction.z * (camera.z - center.z))); 
+    float c = pow(camera.x - center.x, 2.0f) + pow(camera.y - center.y, 2.0f) + pow(camera.z - center.z, 2.0f) - pow(current.radius, 2.0f);
+
+    float delta = pow(b, 2.0f) - (4 * a * c); 
+
+    if(delta >= 0)
+    {
+      color.r = 0;
+      color.g = 0;
+      color.b = 0;
+    }
+
+    float t0; 
+    float t1;
   }
 }
 
@@ -355,6 +392,12 @@ void display()
 
 }
 
+void reshape(int w, int h)
+{
+  //set up image size
+  glViewport(0, 0, WIDTH * 2, HEIGHT * 2);
+}
+
 void init()
 {
   glMatrixMode(GL_PROJECTION);
@@ -402,6 +445,7 @@ int main (int argc, char ** argv)
   glutInitWindowSize(WIDTH,HEIGHT);
   int window = glutCreateWindow("Ray Tracer");
   glutDisplayFunc(display);
+  glutReshapeFunc(reshape); 
   glutIdleFunc(idle);
   init();
   glutMainLoop();
