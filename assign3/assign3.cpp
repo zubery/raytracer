@@ -11,6 +11,8 @@ Name: Ryan Zubery
 #include <GLUT/glut.h>
 #include <pic.h>
 #include <string.h>
+#include <math.h>
+#include <iostream>
 
 #define MAX_TRIANGLES 2000
 #define MAX_SPHERES 10
@@ -39,6 +41,13 @@ struct Vertex
   double color_specular[3];
   double normal[3];
   double shininess;
+};
+
+struct Vector3
+{
+  float x;
+  float y;
+  float z;
 };
 
 typedef struct _Triangle
@@ -70,14 +79,28 @@ int num_triangles=0;
 int num_spheres=0;
 int num_lights=0;
 
+struct Vector3 camera;
+struct Vector3 ray00;
+struct Vector3 ray01;
+struct Vector3 ray10;
+struct Vector3 ray11;
+
 void plot_pixel_display(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 void plot_pixel_jpeg(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
+
+void create_frustum();
+struct Vector3 lerpRay(int x, int y);
+void triangle_intersection(struct Vector3 direction);
+void sphere_intersection(struct Vector3 direction);
 
 //MODIFY THIS FUNCTION
 void draw_scene()
 {
   unsigned int x,y;
+
+  create_frustum();
+
   //simple output
   for(x=0; x<WIDTH; x++)
   {
@@ -85,12 +108,89 @@ void draw_scene()
     glBegin(GL_POINTS);
     for(y=0;y < HEIGHT;y++)
     {
+      struct Vector3 direction; 
+
+      direction = lerpRay(x, y);
+
+      std::cout << direction.x << ", " << direction.y << ", " << direction.z << std::endl;
+
+      triangle_intersection(direction);
+      sphere_intersection(direction); 
+
       plot_pixel(x,y,x%256,y%256,(x+y)%256);
     }
     glEnd();
     glFlush();
   }
   printf("Done!\n"); fflush(stdout);
+}
+
+void create_frustum()
+{
+  camera.x = 0.0f;
+  camera.y = 0.0f;
+  camera.z = 0.0f;
+
+  float aspect = WIDTH/HEIGHT;
+  float halfFOV = fov / 2.0f;
+  float halfFOVRad = halfFOV * (M_PI / 180.0f);
+  float tanHalfFOVRad = tan(halfFOVRad);
+
+  ray00.x = -1.0f * aspect * tanHalfFOVRad;
+  ray00.y = -1.0f * tanHalfFOVRad;
+  ray00.z = -1.0f;
+
+  ray01.x = -1.0f * aspect * tanHalfFOVRad;
+  ray01.y = tanHalfFOVRad;
+  ray01.z = -1.0f;
+
+  ray10.x = aspect * tanHalfFOVRad;
+  ray10.y = -1.0f * tanHalfFOVRad;
+  ray10.z = -1.0f;
+
+  ray11.x = aspect * tanHalfFOVRad;
+  ray11.y = tanHalfFOVRad;
+  ray11.z = -1.0f;
+}
+
+struct Vector3 lerpRay(int x, int y)
+{
+  struct Vector3 result;
+
+  float xratio = ((float)x) / ((float)WIDTH);
+  float yratio = ((float)y) / ((float)HEIGHT);
+
+  struct Vector3 left;
+  left.x = (ray00.x + ray01.x) / 2.0f; 
+  left.y = ray00.y + (yratio * (ray01.y - ray00.y));
+  left.z = -1.0f;
+
+  struct Vector3 right;
+  right.x = (ray10.x + ray11.x) / 2.0f;
+  right.y = ray10.y + (yratio * (ray11.y - ray10.y));
+  right.z = -1.0f;
+
+  result.x = left.x + (xratio * (right.x - left.x));
+  result.y = (left.y + right.y) / 2.0f;
+  result.z = -1.0f;
+
+  return result; 
+}
+
+void triangle_intersection(struct Vector3 direction)
+{
+  for(int i = 0; i < num_triangles; i++)
+  {
+
+  }
+}
+
+void sphere_intersection(struct Vector3 direction)
+{
+  for(int i = 0; i < num_spheres; i++)
+  {
+
+  }
 }
 
 void plot_pixel_display(int x,int y,unsigned char r,unsigned char g,unsigned char b)
